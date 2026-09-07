@@ -403,8 +403,15 @@ body[data-werkzeug] .wzseite.an{display:block;animation:eintritt .35s var(--takt
 .bq{display:block;font-size:10.5px;color:var(--grau-fein);margin-top:.6em}
 
 /* das Bildwerk · vom Raumton gehalten, nicht eingefaerbt */
+/* Der Rahmen nimmt die Breite des Bildes, nicht die der Spalte. Bis zum
+   07.09.2026 stand er immer ueber die volle Spaltenbreite: Neben einem
+   hochformatigen Werk blieb links und rechts eine leere Flaeche stehen, die
+   breiter war als das Bild selbst. Die Bildunterschrift bricht innerhalb
+   dieser Breite um und zieht den Rahmen nicht mehr auf. */
 .bildblock{margin:0 0 1.5em;border:1px solid var(--linie);
-  border-top:4px solid var(--akzent-tief);background:var(--papier)}
+  border-top:4px solid var(--akzent-tief);background:var(--papier);
+  width:fit-content;max-width:100%;margin-inline:auto}
+.bildblock .bw-fuss,.bildblock .bw-schild{max-width:100%}
 /* N24, 06.09.2026, Katja: „Die Bilder sollte man aufklappen und großmachen
    können … das gilt auch für alle anderen Bilder.“ Das Bildwerk ist der
    Gegenstand eines Pflichtauftrags und in 340 px nicht auswertbar.
@@ -420,8 +427,16 @@ dialog.lupe .lp-fuss{padding:10px 14px 12px;font-family:var(--sans);
 dialog.lupe .lp-zu{position:absolute;top:8px;right:10px;border:0;
   background:rgba(255,255,255,.86);color:var(--tinte);font-size:19px;
   line-height:1;padding:5px 10px 7px;cursor:pointer;border-radius:2px}
-.bildblock img.bildwerk{width:100%;display:block;max-height:min(40vh,340px);
-  object-fit:contain;object-position:center;background:var(--akzent-flaeche)}
+/* Das Bild bestimmt seine Breite selbst. Bis zum 07.09.2026 stand hier
+   `width:100%` mit `object-fit:contain`: Das Element nahm die ganze Spalte,
+   das Bild fuellte davon nur die Mitte, und links und rechts blieb die
+   Hintergrundflaeche als leerer Kasten stehen. Bei einem hochformatigen
+   Werk war das der groessere Teil der Flaeche. Zugleich von 340 auf 520 px
+   erhoeht — das Bildwerk ist der Gegenstand eines Pflichtauftrags und muss
+   auswertbar sein. Katjas Befund vom 07.09.2026. */
+.bildblock img.bildwerk{width:auto;max-width:100%;display:block;
+  margin-inline:auto;max-height:min(62vh,520px);
+  object-fit:contain;object-position:center}
 .bildblock .bw-fuss{padding:9px 13px 11px}
 .bw-schild{font-size:11.5px;color:var(--grau-hell);margin:0;line-height:1.45}
 .bw-schild b{display:block;font-size:10px;letter-spacing:.05em;
@@ -1032,6 +1047,14 @@ blockquote{margin:0 0 .7em;font-family:var(--serif);font-size:15.5px;font-style:
     (bereich||document).querySelectorAll('.zonen').forEach(function(z){
       var l=z.querySelector('.textspalte'), r=z.querySelector('.arbeitsspalte');
       if(!l||!r){ return; }
+      /* Erst die eigene Regel zuruecknehmen. Sonst misst die Rechnung die
+         Spalte, die sie beim letzten Lauf selbst begrenzt hat: „links-hoch"
+         deckelt sie auf 100vh minus Leisten minus 48, und der naechste Lauf
+         sieht diesen Deckel statt der wirklichen Inhaltshoehe. Die Wahl
+         kippt dann bei jedem Aufruf hin und her, und in einem der beiden
+         Zustaende laeuft die Arbeitsspalte ueber das stehende Gedicht.
+         Katjas Befund vom 07.09.2026 an der Netzfassung. */
+      z.dataset.klebt='nein';
       var lh=l.offsetHeight, rh=r.offsetHeight, wahl='nein';
       if(lh<=frei && rh-lh>300){ wahl='links'; }
       else if(rh<=frei && lh-rh>300){ wahl='rechts'; }
@@ -1044,9 +1067,18 @@ blockquote{margin:0 0 .7em;font-family:var(--serif);font-size:15.5px;font-style:
     });
   }
   var klebeUhr;
-  window.addEventListener('resize', function(){
-    clearTimeout(klebeUhr); klebeUhr=setTimeout(satzKleben,180);
-  });
+  function klebenSpaeter(ms){
+    clearTimeout(klebeUhr);
+    klebeUhr=setTimeout(function(){ satzKleben(); }, ms||180);
+  }
+  window.addEventListener('resize', function(){ klebenSpaeter(180); });
+  /* Jede geoeffnete Klappe aendert die Hoehe einer der beiden Spalten.
+     Bis zum 07.09.2026 rechnete nur `resize` und der Schrittwechsel neu.
+     Wer eine Quellenangabe, die Vertiefung oder eine Expertenaufgabe
+     aufklappte, liess die Klebeart auf dem Stand von vorher stehen — die
+     Arbeitsspalte wuchs, das Gedicht blieb stehen, und der neue Inhalt lief
+     darueber hinweg. `toggle` steigt nicht auf, deshalb in der Fangphase. */
+  document.addEventListener('toggle', function(){ klebenSpaeter(120); }, true);
 
   function waehle(station, schritt){
     if(!schritt) return;
@@ -1153,7 +1185,19 @@ blockquote{margin:0 0 .7em;font-family:var(--serif);font-size:15.5px;font-style:
     lupeBild.src=img.currentSrc||img.src;
     var fig=img.closest('figure'), schild=fig?fig.querySelector('.bw-schild'):null;
     lupeFuss.textContent=schild?(schild.innerText||schild.textContent):'';
+    lupe.style.width='';
     if(lupe.showModal) lupe.showModal(); else lupe.setAttribute('open','');
+    /* Der Kasten nimmt die Breite des Bildes. Ohne das zieht die
+       Bildunterschrift ihn auf ihre eigene Zeilenlaenge auf — `.lp-fuss`
+       darf 80 Zeichen breit werden — und neben einem hochformatigen Werk
+       stand eine leere Flaeche ueber den halben Bildschirm.
+       Katjas Befund vom 07.09.2026. */
+    var passe=function(){
+      var b=lupeBild.getBoundingClientRect().width;
+      if(b>40) lupe.style.width=Math.ceil(b)+'px';
+    };
+    if(lupeBild.complete && lupeBild.naturalWidth) passe();
+    else lupeBild.addEventListener('load', passe, {once:true});
   }
   function lupeZu(){ if(lupe.close) lupe.close(); else lupe.removeAttribute('open'); }
   document.addEventListener('click', function(ev){
