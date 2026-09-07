@@ -148,7 +148,13 @@ body[data-werkzeug] .wzseite.an{display:block;animation:eintritt .35s var(--takt
    Breite, damit benachbarte Zeitraeume sich nicht gegenseitig abfangen.
    Nur die drei Baender mit Sprungziel haben sie — die uebrigen sind seit
    dem 07.09.2026 gar keine Schaltflaechen mehr. */
-.ztb.raum,.ztn.raum,.ztt{position:relative}
+/* KEIN `position:relative` hier. `.ztb`, `.ztn` und `.ztt` sind bereits
+   absolut positioniert, und ein absolut positioniertes Element ist selbst
+   Bezugsrahmen fuer sein ::after. Die Zeile stand hier am 07.09.2026 fuer
+   eine knappe Stunde und hat die drei aus ihrer Positionierung geworfen:
+   Sie fielen in den Textfluss, das Dokument wurde 1124 px breit bei einem
+   Fenster von 820, und die Seite liess sich seitlich schieben. Von Katja
+   am iPad gefunden. */
 .ztb.raum::after,.ztn.raum::after,.ztt::after{content:"";position:absolute;
   left:0;right:0;top:50%;height:44px;transform:translateY(-50%)}
 /* Die Textmarken stehen dicht beieinander. Ihre Flaeche waechst deshalb
